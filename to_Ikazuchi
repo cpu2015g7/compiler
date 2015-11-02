@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+ln -sf Ikazuchi/{*.ml{,i},libmincaml.S} .
+cd shootout; ln -sf Ikazuchi/Makefile .
+cd ../bytemark; ln -sf Ikazuchi/Makefile .
+cd ../min-rt; ln -sf Ikazuchi/globals.s .
+cd ..
