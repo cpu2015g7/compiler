@@ -39,12 +39,12 @@ val fletd : Id.t * exp * t -> t (* shorthand of Let for float *)
 val seq : exp * t -> t (* shorthand of Let for unit *)
 
 val regs : Id.t array
-val fregs : Id.t array
+(* val fregs : Id.t array *)
 val allregs : Id.t list
-val allfregs : Id.t list
+(* val allfregs : Id.t list *)
 val reg_cl : Id.t
 val reg_sw : Id.t
-val reg_fsw : Id.t
+(* val reg_fsw : Id.t *)
 val reg_ra : Id.t  (* return address *)
 val reg_rv : Id.t  (* return value *)
 val reg_hp : Id.t

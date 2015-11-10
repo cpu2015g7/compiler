@@ -17,12 +17,12 @@ let rec target' src (dest, t) = function
       let c2, rs2 = target src (dest, t) e2 in
       c1 && c2, rs1 @ rs2
   | CallCls(x, ys, zs) ->
-      true, (target_args src regs 0 ys @
-	     target_args src fregs 0 zs @
+      true, (target_args src regs 0 ys @ zs (* @
+	     target_args src fregs 0 zs *) @
              if x = src then [reg_cl] else [])
   | CallDir(_, ys, zs) ->
-      true, (target_args src regs 0 ys @
-	     target_args src fregs 0 zs)
+      true, (target_args src regs 0 ys @ zs (* @
+	     target_args src fregs 0 zs *) )
   | _ -> false, []
 and target src dest = function (* register targeting (caml2html: regalloc_target) *)
   | Ans(exp) -> target' src dest exp
@@ -46,7 +46,7 @@ and source' t = function
   | Add(x, V y) | FAddD(x, y) | FMulD(x, y) -> [x; y]
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) | IfGE(_, _, e1, e2) | IfFEq(_, _, e1, e2) | IfFLE(_, _, e1, e2) ->
       source t e1 @ source t e2
-  | CallCls _ | CallDir _ -> (match t with Type.Unit -> [] | Type.Float -> [fregs.(0)] | _ -> [regs.(0)])
+  | CallCls _ | CallDir _ -> (match t with Type.Unit -> [] (* | Type.Float -> [fregs.(0)] *) | _ -> [regs.(0)])
   | _ -> []
 
 type alloc_result = (* allocにおいてspillingがあったかどうかを表すデータ型 *)
@@ -58,7 +58,7 @@ let rec alloc cont regenv x t prefer =
   let all =
     match t with
     | Type.Unit -> [] (* dummy *)
-    | Type.Float -> allfregs
+    (* | Type.Float -> allfregs *)
     | _ -> allregs in
   if all = [] then Alloc("%unit") else (* [XX] ad hoc *)
   if is_reg x then Alloc(x) else
@@ -199,8 +199,8 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
 	 (assert (not (is_reg y));
 	  M.add y r regenv)))
       (0, [], regenv)
-      ys in
-  let (d, farg_regs, regenv) =
+      (ys @ zs) in
+  (* let (d, farg_regs, regenv) =
     List.fold_left
       (fun (d, farg_regs, regenv) z ->
         let fr = fregs.(d) in
@@ -209,14 +209,14 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
 	 (assert (not (is_reg z));
 	  M.add z fr regenv)))
       (0, [], regenv)
-      zs in
+      zs in *)
   let a =
     match t with
     | Type.Unit -> Id.gentmp Type.Unit
-    | Type.Float -> fregs.(0)
+    (* | Type.Float -> fregs.(0) *)
     | _ -> regs.(0) in
   let (e', regenv') = g (a, t) (Ans(Mov(a))) regenv e in
-  { name = Id.L(x); args = arg_regs; fargs = farg_regs; body = e'; ret = t }
+  { name = Id.L(x); args = arg_regs; fargs = []; body = e'; ret = t }
 
 let f (Prog(data, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";

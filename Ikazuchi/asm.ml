@@ -40,23 +40,23 @@ let fletd(x, e1, e2) = Let((x, Type.Float), e1, e2)
 let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 
 let regs =
-  [| "%a0"; "%a1"; "%a2";
-	 "%t0"; "%t1"; "%t2"; "%t3"; "%t4"; "%t5"; "%t6"; "%t7" ; "%t8"; "%t9";
-	 "%s0"; "%s1"; "%s2"; "%s3"; "%s4"; "%s5"; "%s6"; "%s7" |]
-let fregs = Array.init 32 (fun i -> Printf.sprintf "%%f%d" i)
+  [| "$a0"; "$a1"; "$a2";
+	 "$t0"; "$t1"; "$t2"; "$t3"; "$t4"; "$t5"; "$t6"; "$t7" ; "$t8"; "$t9";
+	 "$s0"; "$s1"; "$s2"; "$s3"; "$s4"; "$s5"; "$s6"; "$s7" |]
+(* let fregs = Array.init 32 (fun i -> Printf.sprintf "$f%d" i) *)
 let allregs = Array.to_list regs
-let allfregs = Array.to_list fregs
+(* let allfregs = Array.to_list fregs *)
 let reg_cl = regs.(Array.length regs - 1) (* closure address (caml2html: sparcasm_regcl) *)
 let reg_sw = regs.(Array.length regs - 1) (* temporary for swap *)
-let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *)
-let reg_sp = "%sp" (* stack pointer *)
-let reg_fp = "%fp" (* frame pointer *)
-let reg_hp = "%gp" (* heap pointer (caml2html: sparcasm_reghp) *)
-let reg_tmp = "%at" (* assembler template *)
-let reg_ra = "%ra" (* return address *)
-let reg_rv = "%v0" (* return value *)
-let reg_zero = "%zero" (* zero register *)
-let is_reg x = (x.[0] = '%')
+(* let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *) *)
+let reg_sp = "$sp" (* stack pointer *)
+let reg_fp = "$fp" (* frame pointer *)
+let reg_hp = "$gp" (* heap pointer (caml2html: sparcasm_reghp) *)
+let reg_tmp = "$at" (* assembler template *)
+let reg_ra = "$ra" (* return address *)
+let reg_rv = "$v0" (* return value *)
+let reg_zero = "$zero" (* zero register *)
+let is_reg x = (x.[0] = '$')
 
 (* super-tenuki *)
 let rec remove_and_uniq xs = function
@@ -87,4 +87,4 @@ let rec concat e1 xt e2 =
   | Ans(exp) -> Let(xt, exp, e2)
   | Let(yt, exp, e1') -> Let(yt, exp, concat e1' xt e2)
 
-let align i = (if i mod 8 = 0 then i else i + 4)
+let align i = i
