@@ -53,7 +53,16 @@ let rec g oc = function (* 命令列のアセンブリ生成 (caml2html: emit_g) *)
 and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> Printf.fprintf oc "\tnop\n"
-  | NonTail(x), Set(i) -> Printf.fprintf oc "\taddi\t%s, %s, %d\n" x reg_zero i
+  | NonTail(x), Set(i)  when i >= -32768 && i < 32768 ->
+          Printf.fprintf oc "\taddi\t%s, %s, %d\n" x reg_zero i
+  | NonTail(x), Set(i)  when i >= 32768 && i < 65536 ->
+          Printf.fprintf oc "\tori\t%s, %s, %d\n" x reg_zero i
+  | NonTail(x), Set(i)  ->
+          let n = i lsr 16 in
+          let m = i lxor (n lsl 16) in
+          Printf.fprintf oc "\tori\t%s, %s, %d\n" x reg_zero n;
+          Printf.fprintf oc "\tsll\t%s, %s, %d\n" x x 16;
+          if m != 0 then Printf.fprintf oc "\tori\t%s, %s, %d\n" x x m
   | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tmove\t%s, %s\n" x y (* bimyo *)
   | NonTail(x), Mov(y) ->
       if x <> y then Printf.fprintf oc "\tmove\t%s, %s\n" x y
