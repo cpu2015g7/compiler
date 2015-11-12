@@ -17,11 +17,11 @@ let rec target' src (dest, t) = function
       let c2, rs2 = target src (dest, t) e2 in
       c1 && c2, rs1 @ rs2
   | CallCls(x, ys, zs) ->
-      true, (target_args src regs 0 ys @ zs (* @
+      true, (target_args src regs 0 (ys @ zs) (* @
 	     target_args src fregs 0 zs *) @
              if x = src then [reg_cl] else [])
   | CallDir(_, ys, zs) ->
-      true, (target_args src regs 0 ys @ zs (* @
+      true, (target_args src regs 0 (ys @ zs) (* @
 	     target_args src fregs 0 zs *) )
   | _ -> false, []
 and target src dest = function (* register targeting (caml2html: regalloc_target) *)
@@ -60,7 +60,7 @@ let rec alloc cont regenv x t prefer =
     | Type.Unit -> [] (* dummy *)
     (* | Type.Float -> allfregs *)
     | _ -> allregs in
-  if all = [] then Alloc("%unit") else (* [XX] ad hoc *)
+  if all = [] then Alloc("$v0") else (* [XX] ad hoc *)
   if is_reg x then Alloc(x) else
   let free = fv cont in
   try
@@ -74,7 +74,7 @@ let rec alloc cont regenv x t prefer =
         free in
     let r = (* そうでないレジスタを探す *)
       List.find
-        (fun r -> not (S.mem r live))
+        (fun r -> Format.eprintf "pa %s@." r; not (S.mem r live))
         (prefer @ all) in
     Format.eprintf "allocated %s to %s@." x r; (* debug *)
     Alloc(r)
@@ -93,7 +93,8 @@ let rec alloc cont regenv x t prefer =
 (* auxiliary function for g and g'_and_restore *)
 let add x r regenv =
   if is_reg x then (assert (x = r); regenv) else
-  M.add x r regenv
+	M.add x r regenv
+  
 
 (* auxiliary functions for g' *)
 exception NoReg of Id.t * Type.t
@@ -199,17 +200,17 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
 	 (assert (not (is_reg y));
 	  M.add y r regenv)))
       (0, [], regenv)
-      (ys @ zs) in
-  (* let (d, farg_regs, regenv) =
+      ys in
+  let (d, farg_regs, regenv) =
     List.fold_left
       (fun (d, farg_regs, regenv) z ->
-        let fr = fregs.(d) in
+        let fr = regs.(d) in
         (d + 1,
 	 farg_regs @ [fr],
 	 (assert (not (is_reg z));
 	  M.add z fr regenv)))
-      (0, [], regenv)
-      zs in *)
+      (List.length ys, [], regenv)
+      zs in
   let a =
     match t with
     | Type.Unit -> Id.gentmp Type.Unit

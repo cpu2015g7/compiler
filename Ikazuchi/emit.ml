@@ -249,22 +249,22 @@ and g'_non_tail_if oc dest e1 e2 b bn =
   let stackset2 = !stackset in
   stackset := S.inter stackset1 stackset2
 and g'_args oc x_reg_cl ys zs =
-  let (i, yzrs) =
+  let (i, yrs) =
     List.fold_left
-      (fun (i, yzrs) y -> (i + 1, (y, regs.(i)) :: yzrs))
+      (fun (i, yrs) ys -> (i + 1, (ys, regs.(i)) :: yrs))
       (0, x_reg_cl)
-      (ys @ zs) in
+      ys in
   List.iter
     (fun (y, r) -> Printf.fprintf oc "\tmove\t%s, %s\n" r y)
-    (shuffle reg_sw yzrs)
- (* ; let (d, zfrs) =
+    (shuffle reg_sw yrs);
+  let (d, zfrs) =
     List.fold_left
-      (fun (d, zfrs) z -> (d + 1, (z, fregs.(d)) :: zfrs))
-      (0, [])
+      (fun (d, zfrs) zs -> (d + 1, (zs, regs.(d)) :: zfrs))
+      (List.length ys, [])
       zs in
   List.iter
-    (fun (z, fr) -> Printf.fprintf oc "\tmove\t%s, %s, %s\n" fr z)
-    (shuffle reg_fsw zfrs) *)
+    (fun (z, fr) -> Printf.fprintf oc "\tmove\t%s, %s\n" fr z)
+    (shuffle reg_sw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
   Printf.fprintf oc "%s:\n" x;
