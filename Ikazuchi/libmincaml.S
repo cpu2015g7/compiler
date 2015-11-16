@@ -263,35 +263,36 @@ floor_end:
 min_caml_int_of_float:
 	fslt	$at, $a0, $zero
 	beq	$at, $zero, ftoi_main	
-	move	$s4, $zero
+	move	$s5, $zero
 	fneg	$a0, $a0	
-	addi	$s4, $s4, 1
+	addi	$s5, $s5, 1
 ftoi_main:
 	addi	$s0, $zero, 8388608
 	llw	$s1, (lf.1)
+	llw	$s2, (lf.2)
 	fslt	$at, $a0, $s1 		
 	beq	$at, $zero, ftoi_large		
 	subi	$v0, $a0, 0x4b000000	
 	beq	$zero, $zero, ftoi_flag
 	nop
 ftoi_large:
-	move	$s2, $zero			
-	move $s3, $a0
+	move	$s3, $zero			
+	move $s4, $a0
 ftoi_loop:
-	addi	$s2, $s2, 1		
-	fsub	$s3, $s3, $s1		
-	fslt	$at, $s3, $s1
+	addi	$s3, $s3, 1		
+	fadd	$s4, $s4, $s2		
+	fslt	$at, $s4, $s1
 	beq	$at, $zero, ftoi_loop	
 	move	$v0, $zero
 ftoi_loop2:
 	add	$v0, $s0, $v0	
-	addi	$s2, $s2, -1
-	slt	$at, 0, $s2
+	addi	$s3, $s3, -1
+	slt	$at, 0, $s3
 	bne	$at, $zero, ftoi_loop2
-	subi	$s3, $s3, 0x4b000000		
-	add	$v0, $s3, $v0	
+	subi	$s4, $s4, 0x4b000000		
+	add	$v0, $s4, $v0	
 ftoi_flag:
-	beq	$s4, $zero, ftoi_end
+	beq	$s5, $zero, ftoi_end
 	nop
 	sub	$v0, $zero, $v0
 ftoi_end:
@@ -485,7 +486,7 @@ sin_elaege_hpi:
         beq	$at, $zero, sin_small_qpi                
 		nop
         jal	min_caml_kernel_sin       
-        j	sin_end               
+        beq	$zero, $zero, sin_end               
 sin_small_qpi:                              
 		fneg	$v0, $a0
         fadd	$a0, $s4, $v0             
@@ -530,7 +531,7 @@ cos_elarge_hpi:
         beq	$at, $zero, cos_small_qpi                
 		nop
         jal	min_caml_kernel_cos      
-        j	cos_end               
+        beq	$zero, $zero, cos_end               
 cos_small_qpi:                             
 		fneg	$v0, $a0
         fadd	$a0, $s3, $v0           
@@ -589,7 +590,7 @@ min_caml_atan:
         fslt	$at, $s0, $s1                 
         bne	$at, $zero, atan_small_24375              
 		nop
-        j	atan_else             
+        beq	$zero, $zero, atan_else             
 # Case 1: |A| < 0.4375
 atan_small_04375:
         addi	$sp, $sp, -1              
