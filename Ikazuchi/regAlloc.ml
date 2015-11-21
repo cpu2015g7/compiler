@@ -60,7 +60,7 @@ let rec alloc cont regenv x t prefer =
     | Type.Unit -> [] (* dummy *)
     (* | Type.Float -> allfregs *)
     | _ -> allregs in
-  if all = [] then Alloc("$v0") else (* [XX] ad hoc *)
+  if all = [] then Alloc("$unit") else (* [XX] ad hoc *)
   if is_reg x then Alloc(x) else
   let free = fv cont in
   try
@@ -74,9 +74,9 @@ let rec alloc cont regenv x t prefer =
         free in
     let r = (* そうでないレジスタを探す *)
       List.find
-        (fun r -> Format.eprintf "pa %s@." r; not (S.mem r live))
+        (fun r -> not (S.mem r live))
         (prefer @ all) in
-    Format.eprintf "allocated %s to %s@." x r; (* debug *)
+    (* Format.eprintf "allocated %s to %s@." x r; (* debug *) *)
     Alloc(r)
   with Not_found ->
     Format.eprintf "register allocation failed for %s@." x;
