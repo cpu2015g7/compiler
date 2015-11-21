@@ -53,19 +53,11 @@ let rec g oc = function (* 命令列のアセンブリ生成 (caml2html: emit_g) *)
 and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> Printf.fprintf oc ""
-  | NonTail(x), Set(i)  when i >= -32768 && i < 32768 ->
-          Printf.fprintf oc "\taddi\t%s, %s, %d\n" x reg_zero i
-  | NonTail(x), Set(i)  when i >= 32768 && i < 65536 ->
-          Printf.fprintf oc "\tori\t%s, %s, %d\n" x reg_zero i
   | NonTail(x), Set(i)  ->
-          let n = i lsr 16 in
-          let m = i lxor (n lsl 16) in
-          Printf.fprintf oc "\tori\t%s, %s, %d\n" x reg_zero n;
-          Printf.fprintf oc "\tsll\t%s, %s, %d\n" x x 16;
-          if m != 0 then Printf.fprintf oc "\tori\t%s, %s, %d\n" x x m
+	 Printf.fprintf oc "\tli\t%s, %d\n" x i;
   | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tllw\t%s, (%s)\n" x y (* llw *)
   | NonTail(x), Mov(y) ->
-      if x <> y then Printf.fprintf oc "\tmove2\t%s, %s\n" x y
+      if x <> y then Printf.fprintf oc "\tmove\t%s, %s\n" x y
   | NonTail(x), Neg(y) ->
       Printf.fprintf oc "\tsub\t%s, %s, %s\n" x reg_zero y
   | NonTail(x), Add(y, z') ->
@@ -87,7 +79,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(_), St(x, y, C(j)) ->
        Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x j y
   | NonTail(x), FMovD(y) ->
-      if x <> y then Printf.fprintf oc "\tmove3\t%s, %s\n" x y
+      if x <> y then Printf.fprintf oc "\tmove\t%s, %s\n" x y
   | NonTail(x), FNegD(y) ->
       Printf.fprintf oc "\tfneg\t%s, %s\n" x y
   | NonTail(x), FAddD(y, z) ->
@@ -215,7 +207,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       if List.mem a allregs && a <> reg_rv then
-        Printf.fprintf oc "\tmove4\t%s, %s\n" a reg_rv
+        Printf.fprintf oc "\tmove\t%s, %s\n" a reg_rv
      (* else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmove\t%s, %s, %s\n" a fregs.(0) reg_zero *)
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
@@ -226,8 +218,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tjal\t%s\n" x;
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
-      (* if List.mem a allregs && a <> reg_rv then *)
-        Printf.fprintf oc "\tmove5\t%s, %s\n" a reg_rv
+      if List.mem a allregs && a <> reg_rv then
+        Printf.fprintf oc "\tmove\t%s, %s\n" a reg_rv
      (* else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmove\t%s, %s, %s\n" a fregs.(0) reg_zero *)
 and g'_tail_if oc e1 e2 b bn =
@@ -261,7 +253,7 @@ and g'_args oc x_reg_cl ys zs =
       (0, x_reg_cl)
       ys in
   List.iter
-    (fun (y, r) -> Printf.fprintf oc "\tmove7\t%s, %s\n" r y)
+    (fun (y, r) -> Printf.fprintf oc "\tmove\t%s, %s\n" r y)
     (shuffle reg_sw yrs);
   let (d, zfrs) =
     List.fold_left
@@ -269,7 +261,7 @@ and g'_args oc x_reg_cl ys zs =
       (List.length ys, [])
       zs in
   List.iter
-    (fun (z, fr) -> Printf.fprintf oc "\tmove8\t%s, %s\n" fr z)
+    (fun (z, fr) -> Printf.fprintf oc "\tmove\t%s, %s\n" fr z)
     (shuffle reg_sw zfrs)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
