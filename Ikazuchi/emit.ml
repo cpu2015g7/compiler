@@ -56,6 +56,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(x), Set(i)  ->
 	 Printf.fprintf oc "\tli\t%s, %d\n" x i;
   | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tllw\t%s, (%s)\n" x y (* llw *)
+  | NonTail(x), SetA(Id.L(y)) ->
+	 Printf.fprintf oc "\tla\t%s, %s\n" x y
   | NonTail(x), Mov(y) ->
       if x <> y then Printf.fprintf oc "\tmove\t%s, %s\n" x y
   | NonTail(x), Neg(y) ->
@@ -122,7 +124,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, (Set _ | SetL _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
+  | Tail, (Set _ | SetL _ | SetA _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
       g' oc (NonTail(reg_rv), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
   | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->
@@ -131,33 +133,35 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | Tail, (Restore(x) as exp) ->
       (match locate x with
       | [i] -> g' oc (NonTail(reg_rv), exp)
-      | [i; j] when i + 1 = j -> g' oc (NonTail(reg_rv), exp) (* *)
+      | [i; j] when i + 1 = j -> g' oc (NonTail(reg_rv), exp)
       | _ -> assert false);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, IfEq(x, V(y), e1, e2) ->
+  | Tail, IfEq(x, V(y), e1, e2) -> 
       g'_tail_if oc e1 e2 "beq"
       (Printf.sprintf "bne\t%s, %s, " x y)
   | Tail, IfEq(x, C(i), e1, e2) ->
-      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" x x i;
+      Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
       g'_tail_if oc e1 e2 "beq"
-      (Printf.sprintf "bne\t%s, %s, " x reg_zero)
+      (Printf.sprintf "bne\t%s, %s, " x reg_tmp)
   | Tail, IfLE(x, y', e1, e2) ->
       (match y' with
       | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp y x
-      | C(i) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_tmp x i;
-				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_zero reg_tmp);
+      | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
+				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_tmp x);
       g'_tail_if oc e1 e2 "ble"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | Tail, IfGE(x, y', e1, e2) ->
       (match y' with
       | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
-      | C(i) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_tmp reg_tmp i;
-				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_tmp reg_zero);
+      | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
+				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
       g'_tail_if oc e1 e2 "bge"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | Tail, IfFEq(x, y, e1, e2) ->
+	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp x y;
+	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_sw y x;
       g'_tail_if oc e1 e2 "bfeq"
-      (Printf.sprintf "bne\t%s, %s, " x y)
+      (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_sw)
   | Tail, IfFLE(x, y, e1, e2) ->
 	  Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp y x;
       g'_tail_if oc e1 e2 "bfle"
@@ -166,26 +170,28 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       g'_non_tail_if oc (NonTail(z)) e1 e2 "beq"
       (Printf.sprintf "bne\t%s, %s, " x y)
   | NonTail(z), IfEq(x, C(i), e1, e2) ->
-      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" x x i;
+      Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
       g'_non_tail_if oc (NonTail(z)) e1 e2 "beq"
-      (Printf.sprintf "bne\t%s, %s, " x reg_zero)
+      (Printf.sprintf "bne\t%s, %s, " x reg_tmp)
   | NonTail(z), IfLE(x, y', e1, e2) ->
       (match y' with
       | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp y x
-      | C(i) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_tmp x i;
-				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_zero reg_tmp);
+      | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
+				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_tmp x);
       g'_non_tail_if oc (NonTail(z)) e1 e2 "ble"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | NonTail(z), IfGE(x, y', e1, e2) ->
       (match y' with
       | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
-      | C(i) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_tmp reg_tmp i;
-				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp reg_tmp reg_zero);
+      | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
+				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
 	  g'_non_tail_if oc (NonTail(z)) e1 e2 "bge"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | NonTail(z), IfFEq(x, y, e1, e2) ->
-      g'_non_tail_if oc (NonTail(z)) e1 e2 "bfeq"
-	  (Printf.sprintf "bne\t%s, %s, " x y)
+	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp x y;
+	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_sw y x;
+      g'_tail_if oc e1 e2 "bfeq"
+      (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_sw)
   | NonTail(z), IfFLE(x, y, e1, e2) ->
 	  Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp y x;
       g'_non_tail_if oc (NonTail(z)) e1 e2 "bfle"
@@ -203,7 +209,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tsw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
-      Printf.fprintf oc "\tjal\t%s\n" reg_tmp;
+      Printf.fprintf oc "\tjal\tdummy_label\n";
+      Printf.fprintf oc "dummy_label:\n";
+      Printf.fprintf oc "\taddi\t%s, %s, 2\n" reg_ra reg_ra;
+      Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       if List.mem a allregs && a <> reg_rv then
