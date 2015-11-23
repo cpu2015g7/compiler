@@ -81,7 +81,7 @@ let rec g env = function (* 式の仮想マシンコード生成 (caml2html: virtual_g) *)
       Let((x, t), Mov(reg_hp),
 	  Let((reg_hp, Type.Int), Add(reg_hp, C(align (- offset))),
 	      let z = Id.genid "l" in
-	      Let((z, Type.Int), SetL(l),
+	      Let((z, Type.Int), SetA(l),
 		  seq(St(z, x, C(0)),
 		      store_fv))))
   | Closure.AppCls(x, ys) ->
