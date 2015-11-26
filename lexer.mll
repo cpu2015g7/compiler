@@ -30,6 +30,10 @@ rule token = parse
     { INT(int_of_string (Lexing.lexeme lexbuf)) }
 | digit+ ('.' digit*)? (['e' 'E'] ['+' '-']? digit+)?
     { FLOAT(float_of_string (Lexing.lexeme lexbuf)) }
+| '*'
+    { AST }
+| '/'
+    { SLASH }
 | '-' (* -.より後回しにしなくても良い? 最長一致? *)
     { MINUS }
 | '+' (* +.より後回しにしなくても良い? 最長一致? *)
@@ -70,7 +74,9 @@ rule token = parse
     { COMMA }
 | '_'
     { IDENT(Id.gentmp Type.Unit) }
-| "Array.create" (* [XX] ad hoc *)
+| "Array.create"
+    { ARRAY_CREATE }
+| "create_array" 
     { ARRAY_CREATE }
 | '.'
     { DOT }
