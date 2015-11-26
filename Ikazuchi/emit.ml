@@ -29,6 +29,8 @@ let reg r =
   then String.sub r 1 (String.length r - 1)
   else r
 
+let dummy_counter = ref 0
+
 (* 関数呼び出しのために引数を並べ替える(register shuffling) (caml2html: emit_shuffle) *)
 let rec shuffle sw xys =
   (* remove identical moves *)
@@ -70,6 +72,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       (match z' with
       | V(z) -> Printf.fprintf oc "\tsub\t%s, %s, %s\n" x y z
       | C(i) -> Printf.fprintf oc "\tsubi\t%s, %s, %d\n" x y i)
+  | NonTail(x), Mul(y, z') ->
+       Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y (* z' = C(4) *)
+  | NonTail(x), Div(y, z') ->
+       Printf.fprintf oc "\tsrl\t%s, %s, 1\n" x y (* z' = C(2) *)
   | NonTail(x), Ld(y, V(z)) -> 
       (Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp y z;
        Printf.fprintf oc "\tlw\t%s, 0(%s)\n" x reg_tmp)
@@ -113,7 +119,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* | NonTail(_), Save(x, y) when List.mem x allfregs && not (S.mem y !stackset) ->
       savef y;
       Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (offset y) reg_sp *)
-  | NonTail(_), Save(x, y) -> assert (S.mem y !stackset); ()
+  | NonTail(_), Save(x, y) -> (*assert (S.mem y !stackset);*) ()
   (* 復帰の仮想命令の実装 (caml2html: emit_restore) *)
   | NonTail(x), Restore(y) when List.mem x allregs ->
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
@@ -124,7 +130,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, (Set _ | SetL _ | SetA _ | Mov _ | Neg _ | Add _ | Sub _ | Ld _ as exp) ->
+  | Tail, (Set _ | SetL _ | SetA _ | Mov _ | Neg _ | Add _ | Sub _ |  Mul _ | Div _ | Ld _ as exp) ->
       g' oc (NonTail(reg_rv), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
   | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->
@@ -208,9 +214,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       let ss = stacksize () in
       Printf.fprintf oc "\tsw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
-     Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
-      Printf.fprintf oc "\tjal\tdummy_label\n";
-      Printf.fprintf oc "dummy_label:\n";
+      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
+	  incr dummy_counter;
+      Printf.fprintf oc "\tjal\tdummy_label.%d\n" !dummy_counter;
+      Printf.fprintf oc "dummy_label.%d:\n" !dummy_counter;
       Printf.fprintf oc "\taddi\t%s, %s, 2\n" reg_ra reg_ra;
       Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
@@ -231,6 +238,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
         Printf.fprintf oc "\tmove\t%s, %s\n" a reg_rv
      (* else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmove\t%s, %s, %s\n" a fregs.(0) reg_zero *)
+(*  | NonTail(_), _ -> Printf.fprintf oc "\tERORR_NONTAIL\n"
+  | Tail(_), _ -> Printf.fprintf oc "\tERORR_TAIL\n" *)
 and g'_tail_if oc e1 e2 b bn =
   let b_else = Id.genid (b ^ "_else") in
   Printf.fprintf oc "\t%s%s\n" bn b_else;
@@ -289,9 +298,9 @@ let f oc (Prog(data, fundefs, e)) =
     Printf.fprintf oc "\t.long\t0x%lx\n" (getf d))
   data;
   Printf.fprintf oc ".text\n";
-  Printf.fprintf oc "\t.globl _min_caml_start\n";
+  Printf.fprintf oc "\t.globl main\n";
   List.iter (fun fundef -> h oc fundef) fundefs;
-  Printf.fprintf oc "_min_caml_start: # main entry point\n";
+  Printf.fprintf oc "main: # main entry point\n";
   Printf.fprintf oc "\t# main program start\n";
   stackset := S.empty;
   stackmap := [];
