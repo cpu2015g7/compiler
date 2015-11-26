@@ -9,6 +9,8 @@ let addtyp x = (x, Type.gentyp ())
 %token <int> INT
 %token <float> FLOAT
 %token NOT
+%token AST
+%token SLASH
 %token MINUS
 %token PLUS
 %token MINUS_DOT
@@ -45,7 +47,7 @@ let addtyp x = (x, Type.gentyp ())
 %left COMMA
 %left EQUAL LESS_GREATER LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left PLUS MINUS PLUS_DOT MINUS_DOT
-%left AST_DOT SLASH_DOT
+%left AST SLASH AST_DOT SLASH_DOT
 %right prec_unary_minus
 %left prec_app
 %left DOT
@@ -83,6 +85,10 @@ exp: /* (* 一般の式 (caml2html: parser_exp) *) */
     { match $2 with
     | Float(f) -> Float(-.f) (* -1.23などは型エラーではないので別扱い *)
     | e -> Neg(e) }
+| exp AST exp
+    { Mul($1, $3) }
+| exp SLASH exp
+    { Div($1, $3) }
 | exp PLUS exp /* (* 足し算を構文解析するルール (caml2html: parser_add) *) */
     { Add($1, $3) }
 | exp MINUS exp
