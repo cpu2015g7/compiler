@@ -24,8 +24,8 @@ let locate x =
 let offset x = (* Format.eprintf "%s %d@." x (- List.hd (locate x)); *) - List.hd (locate x)
 let stacksize () = align (List.length !stackmap + 1)
 
-let reg r = 
-  if is_reg r 
+let reg r =
+  if is_reg r
   then String.sub r 1 (String.length r - 1)
   else r
 
@@ -76,7 +76,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
        Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y (* z' = C(4) *)
   | NonTail(x), Div(y, z') ->
        Printf.fprintf oc "\tsrl\t%s, %s, 1\n" x y (* z' = C(2) *)
-  | NonTail(x), Ld(y, V(z)) -> 
+  | NonTail(x), Ld(y, V(z)) ->
       (Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp y z;
        Printf.fprintf oc "\tlw\t%s, 0(%s)\n" x reg_tmp)
   | NonTail(x), Ld(y, C(j)) ->
@@ -142,7 +142,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       | [i; j] when i + 1 = j -> g' oc (NonTail(reg_rv), exp)
       | _ -> assert false);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, IfEq(x, V(y), e1, e2) -> 
+  | Tail, IfEq(x, V(y), e1, e2) ->
       g'_tail_if oc e1 e2 "beq"
       (Printf.sprintf "bne\t%s, %s, " x y)
   | Tail, IfEq(x, C(i), e1, e2) ->
@@ -158,7 +158,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | Tail, IfGE(x, y', e1, e2) ->
       (match y' with
-      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
+      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y
       | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
 				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
       g'_tail_if oc e1 e2 "bge"
@@ -188,7 +188,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | NonTail(z), IfGE(x, y', e1, e2) ->
       (match y' with
-      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
+      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y
       | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
 				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
 	  g'_non_tail_if oc (NonTail(z)) e1 e2 "bge"
@@ -205,7 +205,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
   | Tail, CallCls(x, ys, zs) -> (* 末尾呼び出し (caml2html: emit_tailcall) *)
       g'_args oc [(x, reg_cl)] ys zs;
-      Printf.fprintf oc "\tjr\t%s\n" reg_cl;
+      Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
+      Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
       Printf.fprintf oc "\tj\t%s\n" x;
