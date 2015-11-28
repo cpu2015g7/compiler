@@ -196,7 +196,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(z), IfFEq(x, y, e1, e2) ->
 	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp x y;
 	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_sw y x;
-      g'_tail_if oc e1 e2 "bfeq"
+      g'_non_tail_if oc (NonTail(z)) e1 e2 "bfeq"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_sw)
   | NonTail(z), IfFLE(x, y, e1, e2) ->
 	  Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp y x;
