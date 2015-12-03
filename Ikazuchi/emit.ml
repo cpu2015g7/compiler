@@ -217,10 +217,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
       Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
 	  incr dummy_counter;
-      Printf.fprintf oc "\tjal\tdummy_label.%d\n" !dummy_counter;
-      Printf.fprintf oc "dummy_label.%d:\n" !dummy_counter;
-      Printf.fprintf oc "\taddi\t%s, %s, 2\n" reg_ra reg_ra;
+      Printf.fprintf oc "\tla\t%s, dummy_label.%d\n" reg_ra !dummy_counter;
       Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
+      Printf.fprintf oc "dummy_label.%d:\n" !dummy_counter;
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       if List.mem a allregs && a <> reg_rv then
