@@ -24,8 +24,8 @@ let locate x =
 let offset x = (* Format.eprintf "%s %d@." x (- List.hd (locate x)); *) - List.hd (locate x)
 let stacksize () = align (List.length !stackmap + 1)
 
-let reg r = 
-  if is_reg r 
+let reg r =
+  if is_reg r
   then String.sub r 1 (String.length r - 1)
   else r
 
@@ -55,7 +55,7 @@ let rec g oc = function (* 命令列のアセンブリ生成 (caml2html: emit_g) *)
 and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> Printf.fprintf oc ""
-  | NonTail(x), Set(i)  ->
+  | NonTail(x), Set(i) ->
 	 Printf.fprintf oc "\tli\t%s, %d\n" x i;
   | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tllw\t%s, (%s)\n" x y (* llw *)
   | NonTail(x), SetA(Id.L(y)) ->
@@ -76,7 +76,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
        Printf.fprintf oc "\tsll\t%s, %s, 2\n" x y (* z' = C(4) *)
   | NonTail(x), Div(y, z') ->
        Printf.fprintf oc "\tsrl\t%s, %s, 1\n" x y (* z' = C(2) *)
-  | NonTail(x), Ld(y, V(z)) -> 
+  | NonTail(x), Ld(y, V(z)) ->
       (Printf.fprintf oc "\tadd\t%s, %s, %s\n" reg_tmp y z;
        Printf.fprintf oc "\tlw\t%s, 0(%s)\n" x reg_tmp)
   | NonTail(x), Ld(y, C(j)) ->
@@ -119,13 +119,13 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* | NonTail(_), Save(x, y) when List.mem x allfregs && not (S.mem y !stackset) ->
       savef y;
       Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (offset y) reg_sp *)
-  | NonTail(_), Save(x, y) -> (*assert (S.mem y !stackset);*) ()
+  | NonTail(_), Save(x, y) -> Printf.fprintf oc "" (* assert (S.mem y !stackset) *) ;
   (* 復帰の仮想命令の実装 (caml2html: emit_restore) *)
   | NonTail(x), Restore(y) when List.mem x allregs ->
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
-  (* | NonTail(x), Restore(y) ->
-      assert (List.mem x allfregs);
-      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp *)
+  | NonTail(x), Restore(y) ->
+      (* assert (List.mem x allfregs); *)
+      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
   (* 末尾だったら計算結果を第一レジスタにセットしてret (caml2html: emit_tailret) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
@@ -142,7 +142,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       | [i; j] when i + 1 = j -> g' oc (NonTail(reg_rv), exp)
       | _ -> assert false);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, IfEq(x, V(y), e1, e2) -> 
+  | Tail, IfEq(x, V(y), e1, e2) ->
       g'_tail_if oc e1 e2 "beq"
       (Printf.sprintf "bne\t%s, %s, " x y)
   | Tail, IfEq(x, C(i), e1, e2) ->
@@ -158,7 +158,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | Tail, IfGE(x, y', e1, e2) ->
       (match y' with
-      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
+      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y
       | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
 				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
       g'_tail_if oc e1 e2 "bge"
@@ -188,7 +188,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_zero)
   | NonTail(z), IfGE(x, y', e1, e2) ->
       (match y' with
-      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y 
+      | V(y) -> Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x y
       | C(i) -> Printf.fprintf oc "\tli\t%s, %d\n" reg_tmp i;
 				Printf.fprintf oc "\tslt\t%s, %s, %s\n" reg_tmp x reg_tmp);
 	  g'_non_tail_if oc (NonTail(z)) e1 e2 "bge"
@@ -196,7 +196,7 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | NonTail(z), IfFEq(x, y, e1, e2) ->
 	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp x y;
 	 Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_sw y x;
-      g'_tail_if oc e1 e2 "bfeq"
+      g'_non_tail_if oc (NonTail(z)) e1 e2 "bfeq"
       (Printf.sprintf "bne\t%s, %s, " reg_tmp reg_sw)
   | NonTail(z), IfFLE(x, y, e1, e2) ->
 	  Printf.fprintf oc "\tfslt\t%s, %s, %s\n" reg_tmp y x;
@@ -205,7 +205,8 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 関数呼び出しの仮想命令の実装 (caml2html: emit_call) *)
   | Tail, CallCls(x, ys, zs) -> (* 末尾呼び出し (caml2html: emit_tailcall) *)
       g'_args oc [(x, reg_cl)] ys zs;
-      Printf.fprintf oc "\tjr\t%s\n" reg_cl;
+      Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
+      Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
       g'_args oc [] ys zs;
       Printf.fprintf oc "\tj\t%s\n" x;
@@ -216,10 +217,9 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
       Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
 	  incr dummy_counter;
-      Printf.fprintf oc "\tjal\tdummy_label.%d\n" !dummy_counter;
-      Printf.fprintf oc "dummy_label.%d:\n" !dummy_counter;
-      Printf.fprintf oc "\taddi\t%s, %s, 2\n" reg_ra reg_ra;
+      Printf.fprintf oc "\tla\t%s, dummy_label.%d\n" reg_ra !dummy_counter;
       Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
+      Printf.fprintf oc "dummy_label.%d:\n" !dummy_counter;
       Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
       if List.mem a allregs && a <> reg_rv then
@@ -252,7 +252,7 @@ and g'_tail_if oc e1 e2 b bn =
 and g'_non_tail_if oc dest e1 e2 b bn =
   let b_else = Id.genid (b ^ "_else") in
   let b_cont = Id.genid (b ^ "_cont") in
-  Printf.fprintf oc "\t%s\t%s\n" bn b_else;
+  Printf.fprintf oc "\t%s%s\n" bn b_else;
   Printf.fprintf oc "\tnop\n";
   let stackset_back = !stackset in
   g oc (dest, e1);
@@ -269,10 +269,10 @@ and g'_args oc x_reg_cl ys zs =
     List.fold_left
       (fun (i, yrs) ys -> (i + 1, (ys, regs.(i)) :: yrs))
       (0, x_reg_cl)
-      ys in
+      (ys @ zs) in
   List.iter
     (fun (y, r) -> Printf.fprintf oc "\tmove\t%s, %s\n" r y)
-    (shuffle reg_sw yrs);
+    (shuffle reg_sw yrs) (*;
   let (d, zfrs) =
     List.fold_left
       (fun (d, zfrs) zs -> (d + 1, (zs, regs.(d)) :: zfrs))
@@ -280,7 +280,7 @@ and g'_args oc x_reg_cl ys zs =
       zs in
   List.iter
     (fun (z, fr) -> Printf.fprintf oc "\tmove\t%s, %s\n" fr z)
-    (shuffle reg_sw zfrs)
+    (shuffle reg_sw zfrs) *)
 
 let h oc { name = Id.L(x); args = _; fargs = _; body = e; ret = _ } =
   Printf.fprintf oc "%s:\n" x;

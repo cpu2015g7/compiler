@@ -46,12 +46,12 @@ let regs =
   [| "$a0"; "$a1"; "$a2";
 	 "$t0"; "$t1"; "$t2"; "$t3"; "$t4"; "$t5"; "$t6"; "$t7" ; "$t8"; "$t9";
 	 "$s0"; "$s1"; "$s2"; "$s3"; "$s4"; "$s5"; "$s6"; "$s7";
-	 "$k0"|]
+	 "$k0"; "$k1" |]
 (* let fregs = Array.init 32 (fun i -> Printf.sprintf "$f%d" i) *)
 let allregs = Array.to_list regs
 (* let allfregs = Array.to_list fregs *)
 let reg_cl = "$k0" (* closure address (caml2html: sparcasm_regcl) *)
-let reg_sw = "$s7" (* temporary for swap *)
+let reg_sw = "$k1" (* temporary for swap *)
 (* let reg_fsw = fregs.(Array.length fregs - 1) (* temporary for swap *) *)
 let reg_sp = "$sp" (* stack pointer *)
 let reg_fp = "$fp" (* frame pointer *)
