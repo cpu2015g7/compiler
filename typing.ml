@@ -152,7 +152,7 @@ let rec g env e = (* 型推論ルーチン (caml2html: typing_g) *)
 
 let f e =
   extenv := M.add_list [
-    ("feqal", (Type.Fun ([Type.Float; Type.Float], Type.Bool)));
+    ("fequal", (Type.Fun ([Type.Float; Type.Float], Type.Bool)));
     ("fless", (Type.Fun ([Type.Float; Type.Float], Type.Bool)));
     ("fispos", (Type.Fun ([Type.Float], Type.Bool)));
     ("fisneg", (Type.Fun ([Type.Float], Type.Bool)));
@@ -160,22 +160,27 @@ let f e =
     ("fhalf", (Type.Fun ([Type.Float], Type.Float)));
     ("fsqr", (Type.Fun ([Type.Float], Type.Float)));
     ("fabs", (Type.Fun ([Type.Float], Type.Float)));
+    ("abs_float", (Type.Fun ([Type.Float], Type.Float)));
     ("fneg", (Type.Fun ([Type.Float], Type.Float)));
     ("sqrt", (Type.Fun ([Type.Float], Type.Float)));
     ("floor", (Type.Fun ([Type.Float], Type.Float)));
     ("sin", (Type.Fun ([Type.Float], Type.Float))); 
     ("cos", (Type.Fun ([Type.Float], Type.Float)));
     ("atan", (Type.Fun ([Type.Float], Type.Float)));
+    ("truncate", (Type.Fun ([Type.Float], Type.Int)));
     ("int_of_float", (Type.Fun ([Type.Float], Type.Int)));
     ("float_of_int", (Type.Fun ([Type.Int], Type.Float)));
-    ("sin", (Type.Fun ([Type.Float], Type.Float))); 
-    ("cos", (Type.Fun ([Type.Float], Type.Float)));
-    ("atan", (Type.Fun ([Type.Float], Type.Float)));
+    ("print_byte", (Type.Fun ([Type.Int], Type.Unit)));
     ("print_char", (Type.Fun ([Type.Int], Type.Unit)));
     ("print_int", (Type.Fun ([Type.Int], Type.Unit)));
+    ("print_float", (Type.Fun ([Type.Float], Type.Unit)));
+    ("print_newline", (Type.Fun ([Type.Unit], Type.Unit)));
+    ("read_byte", (Type.Fun ([Type.Unit], Type.Int)));
+    ("read_char", (Type.Fun ([Type.Unit], Type.Int)));
+    ("read_int", (Type.Fun ([Type.Unit], Type.Int)));
     ("read_float", (Type.Fun ([Type.Unit], Type.Float)));
-    ("read_int", (Type.Fun ([Type.Unit], Type.Int)))
-  ] M.empty; (* CREATE ALLAY *)
+	("divu10", (Type.Fun ([Type.Int], Type.Int)))
+  ] M.empty;
 
   (match deref_typ (g M.empty e) with
   | Type.Unit -> ()
