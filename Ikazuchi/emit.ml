@@ -55,7 +55,7 @@ let rec g oc = function (* 命令列のアセンブリ生成 (caml2html: emit_g) *)
 and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* 末尾でなかったら計算結果をdestにセット (caml2html: emit_nontail) *)
   | NonTail(_), Nop -> Printf.fprintf oc ""
-  | NonTail(x), Set(i)  ->
+  | NonTail(x), Set(i) ->
 	 Printf.fprintf oc "\tli\t%s, %d\n" x i;
   | NonTail(x), SetL(Id.L(y)) -> Printf.fprintf oc "\tllw\t%s, (%s)\n" x y (* llw *)
   | NonTail(x), SetA(Id.L(y)) ->
@@ -119,13 +119,13 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   (* | NonTail(_), Save(x, y) when List.mem x allfregs && not (S.mem y !stackset) ->
       savef y;
       Printf.fprintf oc "\tsw\t%s, %d(%s)\n" x (offset y) reg_sp *)
-  | NonTail(_), Save(x, y) -> (*assert (S.mem y !stackset);*) ()
+  | NonTail(_), Save(x, y) -> Printf.fprintf oc "" (* assert (S.mem y !stackset) *) ;
   (* 復帰の仮想命令の実装 (caml2html: emit_restore) *)
   | NonTail(x), Restore(y) when List.mem x allregs ->
       Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
-  (* | NonTail(x), Restore(y) ->
-      assert (List.mem x allfregs);
-      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp *)
+  | NonTail(x), Restore(y) ->
+      (* assert (List.mem x allfregs); *)
+      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" x (offset y) reg_sp
   (* 末尾だったら計算結果を第一レジスタにセットしてret (caml2html: emit_tailret) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
@@ -252,7 +252,7 @@ and g'_tail_if oc e1 e2 b bn =
 and g'_non_tail_if oc dest e1 e2 b bn =
   let b_else = Id.genid (b ^ "_else") in
   let b_cont = Id.genid (b ^ "_cont") in
-  Printf.fprintf oc "\t%s\t%s\n" bn b_else;
+  Printf.fprintf oc "\t%s%s\n" bn b_else;
   Printf.fprintf oc "\tnop\n";
   let stackset_back = !stackset in
   g oc (dest, e1);
