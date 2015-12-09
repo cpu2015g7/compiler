@@ -17,6 +17,12 @@ and exp = (* 一つ一つの命令に対応する式 (caml2html: sparcasm_exp) *)
   | St of Id.t * Id.t * id_or_imm
   | FMovD of Id.t
   | FNegD of Id.t
+  | FAbs of Id.t
+  | FSqrt of Id.t
+  | Floor of Id.t
+  | F2I of Id.t
+  | I2F of Id.t
+  | FSlt of Id.t * Id.t
   | FAddD of Id.t * Id.t
   | FSubD of Id.t * Id.t
   | FMulD of Id.t * Id.t
@@ -45,7 +51,7 @@ let seq(e1, e2) = Let((Id.gentmp Type.Unit, Type.Unit), e1, e2)
 let regs =
   [| "$a0"; "$a1"; "$a2";
 	 "$t0"; "$t1"; "$t2"; "$t3"; "$t4"; "$t5"; "$t6"; "$t7" ; "$t8"; "$t9";
-	 "$s0"; "$s1"; "$s2"; "$s3"; "$s4"; "$s5"; "$s6"; "$s7";
+     "$s0"; "$s1"; "$s2"; "$s3"; "$s4"; "$s5"; "$s6"; "$s7"; "$fp"; "$v1";
 	 "$k0"; "$k1" |]
 (* let fregs = Array.init 32 (fun i -> Printf.sprintf "$f%d" i) *)
 let allregs = Array.to_list regs
@@ -72,7 +78,7 @@ let rec remove_and_uniq xs = function
 let fv_id_or_imm = function V(x) -> [x] | _ -> []
 let rec fv_exp = function
   | Nop | Set(_) | SetL(_) | SetA(_) | Comment(_) | Restore(_) -> []
-  | Mov(x) | Neg(x) | FMovD(x) | FNegD(x) | Save(x, _) -> [x]
+  | Mov(x) | Neg(x) | FMovD(x) | FNegD(x) | FAbs(x) | FSqrt(x) | Floor(x) | F2I(x) | I2F(x) | Save(x, _) -> [x]
   | Add(x, y') | Sub(x, y') | Mul(x, y') | Div(x, y') | Ld(x, y') | LdDF(x, y') -> x :: fv_id_or_imm y'
   | St(x, y, z') | StDF(x, y, z') -> x :: y :: fv_id_or_imm z'
   | FAddD(x, y) | FSubD(x, y) | FMulD(x, y) | FDivD(x, y) -> [x; y]

@@ -90,6 +90,19 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       if x <> y then Printf.fprintf oc "\tmove\t%s, %s\n" x y
   | NonTail(x), FNegD(y) ->
       Printf.fprintf oc "\tfneg\t%s, %s\n" x y
+  | (NonTail(x), FAbs(y)) ->
+      Printf.fprintf oc "\tsll\t%s, %s, 1\n" x y;
+      Printf.fprintf oc "\tsrl\t%s, %s, 1\n" x x
+  | (NonTail(x), FSqrt(y)) ->
+      Printf.fprintf oc "\tfsqrt\t%s, %s\n" x y
+  | (NonTail(x), Floor(y)) ->
+      Printf.fprintf oc "\tflr\t%s, %s\n" x y
+  | (NonTail(x), F2I(y)) ->
+      Printf.fprintf oc "\tf2i\t%s, %s\n" x y
+  | (NonTail(x), I2F(y)) ->
+      Printf.fprintf oc "\ti2f\t%s, %s\n" x y
+  | (NonTail(x), FSlt(y, z)) ->
+      Printf.fprintf oc "\tfslt\t%s, %s, %s\n" x y z
   | NonTail(x), FAddD(y, z) ->
       Printf.fprintf oc "\tfadd\t%s, %s, %s\n" x y z
   | NonTail(x), FSubD(y, z) ->
@@ -130,10 +143,10 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
   | Tail, (Nop | St _ | StDF _ | Comment _ | Save _ as exp) ->
       g' oc (NonTail(Id.gentmp Type.Unit), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, (Set _ | SetL _ | SetA _ | Mov _ | Neg _ | Add _ | Sub _ |  Mul _ | Div _ | Ld _ as exp) ->
+  | Tail, (Set _ | SetL _ | SetA _ | Mov _ | Neg _ | Add _ | Sub _ |  Mul _ | Div _ | Ld _ | F2I _ | FSlt _ as exp) ->
       g' oc (NonTail(reg_rv), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
-  | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _  as exp) ->
+  | Tail, (FMovD _ | FNegD _ | FAddD _ | FSubD _ | FMulD _ | FDivD _ | LdDF _ | FAbs _ | FSqrt _ | Floor _ | I2F _  as exp) ->
       g' oc (NonTail(reg_rv), exp);
       Printf.fprintf oc "\tjr\t%s\n" reg_ra;
   | Tail, (Restore(x) as exp) ->
@@ -208,8 +221,20 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
       Printf.fprintf oc "\tlw\t%s, 0(%s)\n" reg_tmp reg_cl;
       Printf.fprintf oc "\tjr\t%s\n" reg_tmp;
   | Tail, CallDir(Id.L(x), ys, zs) -> (* 末尾呼び出し *)
-      g'_args oc [] ys zs;
-      Printf.fprintf oc "\tj\t%s\n" x;
+      (match x with
+      | "min_caml_fneg" -> g' oc (Tail, FNegD(List.hd zs))
+      | "min_caml_fabs" | "min_caml_abs_float" -> g' oc (Tail, FAbs(List.hd zs))
+      | "min_caml_sqrt" -> g' oc (Tail, FSqrt(List.hd zs))
+      | "min_caml_floor" -> g' oc (Tail, Floor(List.hd zs))
+      | "min_caml_int_of_float" | "min_caml_truncate" -> g' oc (Tail, F2I(List.hd zs))
+      | "min_caml_float_of_int" -> g' oc (Tail, I2F(List.hd ys))
+      | "min_caml_fsqr" -> g' oc (Tail, FMulD(List.hd zs, List.hd zs))
+      | "min_caml_fless" -> g' oc (Tail, FSlt(List.hd zs, List.nth zs 1))
+      | "min_caml_fispos" -> g' oc (Tail, FSlt(reg_zero, List.hd zs))
+      | "min_caml_fisneg" -> g' oc (Tail, FSlt(List.hd zs, reg_zero))
+      | "min_caml_print_char" | "min_caml_print_byte" -> Printf.fprintf oc "\trsb\t%s\n" (List.hd ys); Printf.fprintf oc "\tjr\t%s\n" reg_ra
+      | _ -> (g'_args oc [] ys zs;
+              Printf.fprintf oc "\tj\t%s\n" x))
   | NonTail(a), CallCls(x, ys, zs) ->
       g'_args oc [(x, reg_cl)] ys zs;
       let ss = stacksize () in
@@ -227,15 +252,28 @@ and g' oc = function (* 各命令のアセンブリ生成 (caml2html: emit_gprime) *)
      (* else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmove\t%s, %s, %s\n" a fregs.(0) reg_zero *)
   | NonTail(a), CallDir(Id.L(x), ys, zs) ->
-      g'_args oc [] ys zs;
-      let ss = stacksize () in
-      Printf.fprintf oc "\tsw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
-      Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
-      Printf.fprintf oc "\tjal\t%s\n" x;
-      Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
-      Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
-      if List.mem a allregs && a <> reg_rv then
-        Printf.fprintf oc "\tmove\t%s, %s\n" a reg_rv
+      (match x with
+      | "min_caml_fneg" -> g' oc (NonTail(a), FNegD(List.hd zs))
+      | "min_caml_fabs" | "min_caml_abs_float" -> g' oc (NonTail(a), FAbs(List.hd zs))
+      | "min_caml_sqrt" -> g' oc (NonTail(a), FSqrt(List.hd zs))
+      | "min_caml_floor" -> g' oc (NonTail(a), Floor(List.hd zs))
+      | "min_caml_int_of_float" | "min_caml_truncate" -> g' oc (NonTail(a), F2I(List.hd zs))
+      | "min_caml_float_of_int" -> g' oc (NonTail(a), I2F(List.hd ys))
+      | "min_caml_fsqr" -> g' oc (NonTail(a), FMulD(List.hd zs, List.hd zs))
+      | "min_caml_fless" -> g' oc (NonTail(a), FSlt(List.hd zs, List.nth zs 1))
+      | "min_caml_fispos" -> g' oc (NonTail(a), FSlt(reg_zero, List.hd zs))
+      | "min_caml_fisneg" -> g' oc (NonTail(a), FSlt(List.hd zs, reg_zero))
+      | "min_caml_print_char" | "min_caml_print_byte" -> Printf.fprintf oc "\trsb\t%s\n" (List.hd ys)
+      | _ -> (
+          g'_args oc [] ys zs;
+          let ss = stacksize () in
+          Printf.fprintf oc "\tsw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
+          Printf.fprintf oc "\tsubi\t%s, %s, %d\n" reg_sp reg_sp ss;
+          Printf.fprintf oc "\tjal\t%s\n" x;
+          Printf.fprintf oc "\taddi\t%s, %s, %d\n" reg_sp reg_sp ss;
+          Printf.fprintf oc "\tlw\t%s, %d(%s)\n" reg_ra (- (ss - 1)) reg_sp;
+          if List.mem a allregs && a <> reg_rv then
+            Printf.fprintf oc "\tmove\t%s, %s\n" a reg_rv))
      (* else if List.mem a allfregs && a <> fregs.(0) then
         Printf.fprintf oc "\tmove\t%s, %s, %s\n" a fregs.(0) reg_zero *)
 (*  | NonTail(_), _ -> Printf.fprintf oc "\tERORR_NONTAIL\n"

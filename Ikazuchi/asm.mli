@@ -17,6 +17,12 @@ and exp =
   | St of Id.t * Id.t * id_or_imm
   | FMovD of Id.t
   | FNegD of Id.t
+  | FAbs of Id.t
+  | FSqrt of Id.t
+  | Floor of Id.t
+  | F2I of Id.t
+  | I2F of Id.t
+  | FSlt of Id.t * Id.t
   | FAddD of Id.t * Id.t
   | FSubD of Id.t * Id.t
   | FMulD of Id.t * Id.t
