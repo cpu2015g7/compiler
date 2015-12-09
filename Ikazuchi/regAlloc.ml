@@ -38,32 +38,33 @@ and target_args src all n = function (* auxiliary function for Call *)
   | _ :: ys -> target_args src all (n + 1) ys
 (* "register sourcing" (?) as opposed to register targeting *)
 (* （x86の2オペランド命令のためのregister coalescing）*)
-let rec source t = function
+(* let rec source t = function
   | Ans(exp) -> source' t exp
   | Let(_, _, e) -> source t e
 and source' t = function
-  | Mov(x) | Neg(x) | Add(x, C _) | Sub(x, _) | FMovD(x) | FNegD(x) | FSubD(x, _) | FDivD(x, _) -> [x]
+  | Mov(x) | Neg(x) | Add(x, C _) | Sub(x, _) | Mul(x, _) | Div(x, _)| FMovD(x) | FNegD(x) | FSubD(x, _) | FDivD(x, _) -> [x]
   | Add(x, V y) | FAddD(x, y) | FMulD(x, y) -> [x; y]
   | IfEq(_, _, e1, e2) | IfLE(_, _, e1, e2) | IfGE(_, _, e1, e2) | IfFEq(_, _, e1, e2) | IfFLE(_, _, e1, e2) ->
       source t e1 @ source t e2
   | CallCls _ | CallDir _ -> (match t with Type.Unit -> [] (* | Type.Float -> [fregs.(0)] *) | _ -> [regs.(0)])
-  | _ -> []
+  | _ -> [] *)
 
 type alloc_result = (* allocにおいてspillingがあったかどうかを表すデータ型 *)
   | Alloc of Id.t (* allocated register *)
   | Spill of Id.t (* spilled variable *)
-let rec alloc cont regenv x t prefer =
+let rec alloc dest cont regenv x t =
   (* allocate a register or spill a variable *)
   assert (not (M.mem x regenv));
   let all =
     match t with
     | Type.Unit -> [] (* dummy *)
     (* | Type.Float -> allfregs *)
-    | _ -> allregs in
+    | _ -> List.filter (fun x -> x <> reg_cl) allregs in
   if all = [] then Alloc("$unit") else (* [XX] ad hoc *)
   if is_reg x then Alloc(x) else
   let free = fv cont in
   try
+	let (c, prefer) = target x dest cont in
     let live = (* 生きているレジスタ *)
       List.fold_left
         (fun live y ->
@@ -74,8 +75,8 @@ let rec alloc cont regenv x t prefer =
         free in
     let r = (* そうでないレジスタを探す *)
       List.find
-        (fun r -> not (S.mem r live))
-        (prefer @ all) in
+        (fun r -> not (S.mem r live)) all
+        (* (prefer @ all) *) in
     (* Format.eprintf "allocated %s to %s@." x r; (* debug *) *)
     Alloc(r)
   with Not_found ->
@@ -87,7 +88,7 @@ let rec alloc cont regenv x t prefer =
           try List.mem (M.find y regenv) all
           with Not_found -> false)
         (List.rev free) in
-    Format.eprintf "spilling %s from %s@." y (M.find y regenv);
+    (* Format.eprintf "spilling %s from %s@." y (M.find y regenv); *)
     Spill(y)
 
 (* auxiliary function for g and g'_and_restore *)
@@ -113,10 +114,10 @@ let rec g dest cont regenv = function (* 命令列のレジスタ割り当て (caml2html: re
       assert (not (M.mem x regenv));
       let cont' = concat e dest cont in
       let (e1', regenv1) = g'_and_restore xt cont' regenv exp in
-      let (_call, targets) = target x dest cont' in
-      let sources = source t e1' in
+      (* let (_call, targets) = target x dest cont' in
+      let sources = source t e1' in *)
       (* レジスタ間のmovよりメモリを介するswapのほうが問題なので、sourcesよりtargetsを優先 *)
-      (match alloc cont' regenv1 x t (targets @ sources) with
+      (match alloc dest cont' regenv1 x t (* (targets @ sources) *) with
       | Spill(y) ->
 	  let r = M.find y regenv1 in
 	  let (e2', regenv2) = g dest cont (add x r (M.remove y regenv1)) e in
@@ -216,10 +217,10 @@ let h { name = Id.L(x); args = ys; fargs = zs; body = e; ret = t } = (* 関数のレ
   let a =
     match t with
     | Type.Unit -> Id.gentmp Type.Unit
-    (* | Type.Float -> fregs.(0) *)
-    | _ -> regs.(0) in
+    (* | Type.Float -> regs.(0) *)
+    | _ -> reg_rv in
   let (e', regenv') = g (a, t) (Ans(Mov(a))) regenv e in
-  { name = Id.L(x); args = arg_regs; fargs = []; body = e'; ret = t }
+  { name = Id.L(x); args = arg_regs; fargs = farg_regs; body = e'; ret = t }
 
 let f (Prog(data, fundefs, e)) = (* プログラム全体のレジスタ割り当て (caml2html: regalloc_f) *)
   Format.eprintf "register allocation: may take some time (up to a few minutes, depending on the size of functions)@.";

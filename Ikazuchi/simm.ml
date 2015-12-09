@@ -2,7 +2,7 @@ open Asm
 
 let rec g env = function (* 命令列の即値最適化 (caml2html: simm13_g) *)
   | Ans(exp) -> Ans(g' env exp)
-  | Let((x, t), Set(i), e) ->
+  | Let((x, t), Set(i), e) when (-32768 <= i) && (i < 32768) ->
       (* Format.eprintf "found simm %s = %d@." x i; *)
       let e' = g (M.add x i env) e in
       if List.mem x (fv e') then Let((x, t), Set(i), e') else
@@ -13,6 +13,9 @@ and g' env = function (* 各命令の即値最適化 (caml2html: simm13_gprime) *)
   | Add(x, V(y)) when M.mem y env -> Add(x, C(M.find y env))
   | Add(x, V(y)) when M.mem x env -> Add(y, C(M.find x env))
   | Sub(x, V(y)) when M.mem y env -> Sub(x, C(M.find y env))
+  | Mul(x, V(y)) when M.mem y env -> Mul(x, C(M.find y env))
+  | Mul(x, V(y)) when M.mem x env -> Mul(y, C(M.find x env))
+  | Div(x, V(y)) when M.mem y env -> Div(x, C(M.find y env))
   | Ld(x, V(y)) when M.mem y env -> Ld(x, C(M.find y env))
   | St(x, y, V(z)) when M.mem z env -> St(x, y, C(M.find z env))
   | LdDF(x, V(y)) when M.mem y env -> LdDF(x, C(M.find y env))
